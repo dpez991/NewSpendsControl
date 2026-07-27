@@ -1,0 +1,23 @@
+# Archivos y carpetas de Flutter
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Web específica (como la caché de Chrome que te aparece)
+.dart_tool/chrome-device/
+
+# Código generado y efímero
+flutters/
+flutter/ephemeral
+
+# Archivos de sistema y configuraciones de IDEs
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
