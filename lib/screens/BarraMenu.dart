@@ -4,8 +4,11 @@
 // import 'package:MassApp/screen/facturasComprasListado.dart';
 // import 'package:MassApp/screen/ajustesListado.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../main.dart';
 import '../models/mtd.dart';
+import '../models/clases.dart';
 import 'movimientos.dart';
 import 'principal.dart';
 import 'categorias.dart';
@@ -51,11 +54,20 @@ class _BarraMenuState extends State<Barramenu> {
     final bool salir = await mtdConfirmarDatos(context, '¿Está seguro que desea salir?');
 
     if (salir) {
-      // stopAutoSync();
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const IniciarSesion()),
-        (Route<dynamic> route) => false,
-      );
+      // --- FIREBASE AUTH: Cerrar sesión ---
+      await FirebaseAuth.instance.signOut();
+
+      // Limpiar el estado de sesión del Provider
+      if (context.mounted) {
+        Provider.of<SesionProvider>(context, listen: false).clearUsuario();
+      }
+
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const IniciarSesion()),
+          (Route<dynamic> route) => false,
+        );
+      }
     }
   }
 

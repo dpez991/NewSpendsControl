@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../base/database.dart';
 
 Color mtd_get_color_0(){
   return Color.fromARGB(255, 0, 0, 0);
@@ -15,45 +14,7 @@ Color mtd_get_color_3(){
   return Color.fromARGB(221, 116, 146, 243);
 }
 
-String mtd_transform(String input) {
-  final Map<String, String> map = {
-    'a': '@', 'A': '@',
-    'b': '\$', 'B': '\$',
-    'c': '.', 'C': '.',
-    'd': '¡', 'D': '¡',
-    'e': '¿', 'E': '¿',
-    'f': "'", 'F': "'",
-    'g': '?', 'G': '?',
-    'h': '+', 'H': '+',
-    'i': '*', 'I': '*',
-    'j': 'k', 'J': 'k',
-    'k': '~', 'K': '~',
-    'l': '}', 'L': '}',
-    'm': ']', 'M': ']',
-    'n': '{', 'N': '{',
-    'o': '[', 'O': '[',
-    'p': '-', 'P': '-',
-    'q': '_', 'Q': '_',
-    'r': ':', 'R': ':',
-    's': ',', 'S': ',',
-    't': ';', 'T': ';',
-    'u': '|', 'U': '|',
-    'v': '°', 'V': '°',
-    'w': '¬', 'W': '¬',
-    'x': '#', 'X': '#',
-    'y': '\$', 'Y': '\$',
-    'z': '%', 'Z': '%',
-    ' ': '/',
-    '1': '=', '2': ')', '3': '(', '4': '&',
-    '5': 'a', '6': 'b', '7': 'c', '8': 'd',
-    '9': 'e', '0': 'f',
-  };
-  
-  return input
-      .split('')
-      .map((ch) => map[ch] ?? 'Z') // default "Z" if not found
-      .join();
-}
+
 
 Future<bool> mtdConfirmarDatos(BuildContext context, String vrMensaje) async {
   return await showDialog<bool>(
@@ -139,20 +100,4 @@ void mtd_close_app() {
 
   // Or force quit (use carefully, may cause issues on iOS):
   // exit(0);
-}
-
-Future<Map<String, dynamic>?> mtdLoginRecord(String vrUsuario, String clave) async {
-  //antes de logearse directo en la base de datos central
-  //se probará si existen registros en la base de datos local
-  //verificando si la tabla de usuarios tiene usuarios con la fecha de hoy
-  bool vrHayUsuariosHoy = await DatabaseHelper().mtdDBLocalBuscarSiHayUsuariosHoy();
-  
-  if(vrHayUsuariosHoy)
-  {
-    Map<String, dynamic>? vrResultadoLocal = await DatabaseHelper().mtdDBLocalLoginRecord(vrUsuario, clave);
-
-    return vrResultadoLocal;
-  } else {
-    return {"id": -1, "nombre": "No hay usuario"};
-  }
 }

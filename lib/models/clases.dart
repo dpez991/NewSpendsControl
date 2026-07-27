@@ -12,15 +12,24 @@ class SesionProvider extends ChangeNotifier {
     _usuario = user;
     notifyListeners();
   }
+
+  void clearUsuario() {
+    _usuario = null;
+    notifyListeners();
+  }
 }
 
 class Usuario {
-  final int id;
+  final String uid;    // UID generado por Firebase Authentication
   final String nombre;
+  final String codigo; // Código de usuario (ya no se usa para autenticar)
+  final String correo;
 
   Usuario({
-    required this.id,
+    required this.uid,
     required this.nombre,
+    required this.codigo,
+    required this.correo,
   });
 }
 

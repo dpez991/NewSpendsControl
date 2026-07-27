@@ -193,15 +193,15 @@ class DatabaseHelper {
     String vrClave,
   ) async {
     final db = await database;
-    final vrClaveEncriptada = mtd_transform(vrClave);
-
+    // NOTA: Este método ya no es utilizado por autenticación (migrado a Firebase Auth).
+    // Se conserva para compatibilidad mientras SQLite siga activo en otros módulos.
     return await db.insert(
       'USUARIOS',
       {
         'NOMBRE': vrNombre.trim(),
         'CODIGO': vrCodigo.trim(),
         'CORREO': vrCorreo.trim(),
-        'CLAVE': vrClaveEncriptada.trim(),
+        'CLAVE': vrClave.trim(),
       },
     );
   }
@@ -224,12 +224,12 @@ class DatabaseHelper {
     String vrClave,
   ) async {
     final db = await database;
-    final vrClaveEncriptada = mtd_transform(vrClave);
-
+    // NOTA: Este método ya no es utilizado por autenticación (migrado a Firebase Auth).
+    // Se conserva para compatibilidad mientras SQLite siga activo en otros módulos.
     return await db.update(
       'USUARIOS',
       {
-        'CLAVE': vrClaveEncriptada.trim(),
+        'CLAVE': vrClave.trim(),
       },
       where: 'TRIM(UPPER(CORREO)) = ?',
       whereArgs: [vrCorreo.trim().toUpperCase()],
@@ -238,15 +238,14 @@ class DatabaseHelper {
 
   Future<Map<String, dynamic>> mtdDBLocalLoginRecord(
     String vrUsuario, String vrClave) async {
-
-    String vrClaveEncriptada = mtd_transform(vrClave);
-
+    // NOTA: Este método ya no es utilizado por autenticación (migrado a Firebase Auth).
+    // Se conserva para compatibilidad mientras SQLite siga activo en otros módulos.
     final db = await database;
 
     final result = await db.query(
       'USUARIOS',
       where: 'TRIM(CODIGO) = ? AND TRIM(CLAVE) = ?',
-      whereArgs: [vrUsuario.trim(), vrClaveEncriptada.trim()],
+      whereArgs: [vrUsuario.trim(), vrClave.trim()],
       limit: 1,
     );
 
@@ -255,7 +254,6 @@ class DatabaseHelper {
       final row = result.first;
 
       return {
-        
           "id": row["ID"] ?? 0,
           "nombre": row["NOMBRE"] ?? ""
       };

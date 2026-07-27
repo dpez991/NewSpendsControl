@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Imports de tus pantallas (Verificados y unificados)
 import 'package:spendscontrol/screens/splashscreen.dart';
@@ -9,11 +12,15 @@ import 'package:spendscontrol/screens/crear_usuario.dart';
 import 'package:spendscontrol/screens/recuperar_clave.dart';
 
 // Imports de tus modelos y utilidades compartidas
-import 'package:spendscontrol/base/database.dart';
 import 'package:spendscontrol/models/mtd.dart';
 import 'package:spendscontrol/models/clases.dart';
+import 'package:spendscontrol/firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -41,31 +48,22 @@ class IniciarSesion extends StatefulWidget {
 }
 
 class _IniciarSesionState extends State<IniciarSesion> {
-  final TextEditingController cuentaController = TextEditingController();
+  final TextEditingController correoController = TextEditingController();
   final TextEditingController contrasenaController = TextEditingController();
-  bool vrCargandoUsuarios = true;
-  bool vrHayUsuariosHoy = false;
 
   // Nodos de enfoque para gestionar el teclado limpiamente
-  final cuentaFocus = FocusNode();
+  final correoFocus = FocusNode();
   final contrasenaFocus = FocusNode();
   bool verClave = false;
+  bool _cargando = false;
 
   @override
-  void initState() {
-    super.initState();
-    validarUsuariosLocales();
-  }
-
-  Future<void> validarUsuariosLocales() async {
-    final hayUsuarios = await DatabaseHelper().mtdDBLocalBuscarSiHayUsuariosHoy();
-
-    if (!mounted) return;
-
-    setState(() {
-      vrHayUsuariosHoy = hayUsuarios;
-      vrCargandoUsuarios = false;
-    });
+  void dispose() {
+    correoController.dispose();
+    contrasenaController.dispose();
+    correoFocus.dispose();
+    contrasenaFocus.dispose();
+    super.dispose();
   }
 
   void crearUsuario() {
@@ -82,77 +80,81 @@ class _IniciarSesionState extends State<IniciarSesion> {
   }
 
   Future<void> abrirCrearUsuario() async {
-    final usuarioCreado = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => const CrearUsuarioScreen(),
       ),
     );
-
-    if (!mounted) return;
-
-    if (usuarioCreado == true) {
-      setState(() {
-        vrCargandoUsuarios = true;
-      });
-
-      await validarUsuariosLocales();
-    }
   }
 
-  void validarInicioSesion() async {
-    final cuenta = cuentaController.text.trim();
+  Future<void> validarInicioSesion() async {
+    // toLowerCase() para neutralizar UpperCaseTextFormatter del widget clsTextField
+    final correo = correoController.text.trim().toLowerCase();
     final contrasena = contrasenaController.text.trim();
 
-    if (cuenta.isEmpty || contrasena.isEmpty) {
+    if (correo.isEmpty || contrasena.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor complete todos los campos')),
       );
       return;
     }
 
-    var vrObjeto = await mtdLoginRecord(cuenta, contrasena);
+    setState(() => _cargando = true);
 
-    if (!mounted) return;
+    try {
+      // --- FIREBASE AUTH ---
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: correo,
+        password: contrasena,
+      );
 
-    int vrId = vrObjeto?["id"];
-    String vrNombre = vrObjeto?["nombre"];
+      if (!mounted) return;
 
-    if (vrNombre.isNotEmpty) {
-      if (vrId == -1) {
-        mtdMessage(context, "Actualmente no existe un usuario creado, por favor proceda a crear un usuario", 2);
+      final uid = credential.user!.uid;
+
+      // Obtener datos del perfil desde Firestore
+      final doc = await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(uid)
+          .get();
+
+      if (!mounted) return;
+
+      if (!doc.exists) {
+        await mtdMessage(context, 'No se encontró el perfil del usuario', 4);
+        return;
       }
-      else {
-        var usuario = Usuario(
-          id: vrId,
-          nombre: vrNombre,
-        );
 
-        Provider.of<SesionProvider>(context, listen: false).setUsuario(usuario);
+      final data = doc.data()!;
+      final usuario = Usuario(
+        uid: uid,
+        nombre: data['nombre'] ?? '',
+        codigo: data['codigo'] ?? '',
+        correo: data['correo'] ?? correo,
+      );
 
-        // Navigator.pushReplacement(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => const Barramenu()),
-        // );
+      Provider.of<SesionProvider>(context, listen: false).setUsuario(usuario);
 
-        // Navigator.pushAndRemoveUntil(
-        //   context,
-        //   MaterialPageRoute(builder: (_) => Barramenu()),
-        //   (route) => false,
-        // );
+      // Ejecuta el salto al contenedor principal de navegación
+      await mtdPantalla1();
 
-        
-        // Feedback visual rápido antes de saltar de pantalla
-        // mtdMessage(context, "Iniciando...", 1);
-
-        // Ejecuta el salto al contenedor principal de navegación
-        mtdPantalla1();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      String mensaje = 'Correo o contraseña incorrectos, por favor intente otra vez';
+      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        mensaje = 'Correo o contraseña incorrectos, por favor intente otra vez';
+      } else if (e.code == 'user-disabled') {
+        mensaje = 'Esta cuenta ha sido deshabilitada';
+      } else if (e.code == 'too-many-requests') {
+        mensaje = 'Demasiados intentos fallidos. Intente más tarde';
       }
-    } else {
-      await mtdMessage(context, "Usuario y clave incorrectos, por favor intente otra vez", 2);
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Cuenta o contraseña incorrecta')),
-      // );
+      await mtdMessage(context, mensaje, 2);
+    } catch (_) {
+      if (!mounted) return;
+      await mtdMessage(context, 'Ocurrió un error al iniciar sesión', 4);
+    } finally {
+      if (mounted) setState(() => _cargando = false);
     }
   }
 
@@ -198,59 +200,45 @@ class _IniciarSesionState extends State<IniciarSesion> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (vrCargandoUsuarios) ...[
-                      Center(
-                        child: CircularProgressIndicator(
-                          color: mtd_get_color_2(),
-                        ),
-                      ),
-                    ] else if (vrHayUsuariosHoy) ...[
-                      clsTextField("CÓDIGO DE USUARIO", cuentaController, "Ingrese su usuario", false, 25.0, TextInputType.text, cuentaFocus, null),
-                      // clsTextField("CONTRASEÑA", contrasenaController, "Ingrese su contraseña", true, 25.0, TextInputType.text, contrasenaFocus, null),
-                      clsCampoContrasena(
-                        "CONTRASEÑA",
-                        "Ingrese la nueva contraseña",
-                        contrasenaController,
-                        contrasenaFocus,
-                        verClave,
-                        () => setState(() => verClave = !verClave),
-                      ),
-                      const SizedBox(height: 15),
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: vrCargandoUsuarios
-                              ? [
-                                  CircularProgressIndicator(
-                                    color: mtd_get_color_2(),
+                    clsTextField("CORREO ELECTRÓNICO", correoController, "Ingrese su correo", false, 25.0, TextInputType.emailAddress, correoFocus, null),
+                    clsCampoContrasena(
+                      "CONTRASEÑA",
+                      "Ingrese su contraseña",
+                      contrasenaController,
+                      contrasenaFocus,
+                      verClave,
+                      () => setState(() => verClave = !verClave),
+                    ),
+                    const SizedBox(height: 15),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: _cargando
+                            ? [
+                                CircularProgressIndicator(
+                                  color: mtd_get_color_2(),
+                                ),
+                              ]
+                            : [
+                                TextButton(
+                                  onPressed: recuperarClave,
+                                  child: const Text(
+                                    "Recuperar clave",
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ]
-                              : vrHayUsuariosHoy
-                                  ? [
-                                      TextButton(
-                                        onPressed: recuperarClave,
-                                        child: const Text(
-                                          "Recuperar clave",
-                                          style: TextStyle(
-                                            color: Colors.blue,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      clsButton(context, validarInicioSesion, "Iniciar Sesión"),
-                                      const SizedBox(height: 10),
-                                      clsButton(context, mtd_close_app, "Salir"),
-                                    ]
-                                  : [
-                                      clsButton(context, crearUsuario, "Crear usuario"),
-                                    ],
-                        ),
+                                ),
+                                const SizedBox(height: 4),
+                                clsButton(context, validarInicioSesion, "Iniciar Sesión"),
+                                const SizedBox(height: 10),
+                                clsButton(context, crearUsuario, "Crear usuario"),
+                                const SizedBox(height: 10),
+                                clsButton(context, mtd_close_app, "Salir"),
+                              ],
                       ),
-                    ] else ...[
-                      const SizedBox(height: 100),
-                      clsButton(context, crearUsuario, "Crear usuario"),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -262,7 +250,7 @@ class _IniciarSesionState extends State<IniciarSesion> {
     );
   }
 
-  // CORREGIDO: Ahora abre la BarraMenu para poder recorrer todo el proyecto
+  // Abre la BarraMenu para navegar al contenedor principal
   Future<void> mtdPantalla1 () async {
     await Navigator.pushReplacement(
       context,
@@ -272,4 +260,3 @@ class _IniciarSesionState extends State<IniciarSesion> {
     );
   }
 }
-

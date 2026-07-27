@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "465980712733",
+    "project_id": "spendscontrol",
+    "storage_bucket": "spendscontrol.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465980712733:android:c7f9c3383eeb3aeb6d23f4",
+        "android_client_info": {
+          "package_name": "com.example.spendscontrol"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuqX2KJ9i6Lq8S_3fSIK2h5RPMJaVMQ50"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

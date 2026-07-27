@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:spendscontrol/base/database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spendscontrol/models/clases.dart';
 import 'package:spendscontrol/models/mtd.dart';
 
@@ -66,7 +67,8 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
   Future<void> guardarUsuario() async {
     final nombre = nombreController.text.trim();
     final codigo = codigoController.text.trim();
-    final correo = correoController.text.trim();
+    // toLowerCase() para garantizar consistencia con Firebase Auth (que normaliza correos a minúsculas)
+    final correo = correoController.text.trim().toLowerCase();
     final clave = claveController.text;
     final confirmarClave = confirmarClaveController.text;
 
@@ -95,11 +97,39 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     setState(() => guardando = true);
 
     try {
-      await DatabaseHelper().mtdDBLocalInsertUsuario(nombre, codigo, correo, clave);
+      // --- FIREBASE AUTH: Crear usuario con correo y contraseña ---
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: correo,
+        password: clave,
+      );
+
+      final uid = credential.user!.uid;
+
+      // --- FIRESTORE: Guardar perfil del usuario ---
+      await FirebaseFirestore.instance.collection('usuarios').doc(uid).set({
+        'uid': uid,
+        'nombre': nombre,
+        'codigo': codigo,
+        'correo': correo,
+        'fechaRegistro': FieldValue.serverTimestamp(),
+        'estado': 1,
+      });
+
       if (!mounted) return;
       await mtdMessage(context, "Usuario creado correctamente", 3);
       if (!mounted) return;
       Navigator.pop(context, true);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      String mensaje = 'No se pudo crear el usuario';
+      if (e.code == 'email-already-in-use') {
+        mensaje = 'Ya existe una cuenta con ese correo electrónico';
+      } else if (e.code == 'invalid-email') {
+        mensaje = 'El formato del correo electrónico no es válido';
+      } else if (e.code == 'weak-password') {
+        mensaje = 'La contraseña es demasiado débil';
+      }
+      await mtdMessage(context, mensaje, 4);
     } catch (_) {
       if (!mounted) return;
       await mtdMessage(context, "No se pudo crear el usuario", 4);
