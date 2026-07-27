@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:spendscontrol/models/clases.dart';
 import 'package:spendscontrol/models/mtd.dart';
 
@@ -32,8 +33,24 @@ class _RecuperarClaveScreenState extends State<RecuperarClaveScreen> {
     return null;
   }
 
+  // Consulta Firestore para verificar si el correo existe antes de enviar el enlace.
+  // El correo debe llegar ya normalizado (trim + toLowerCase).
+  // Retorna null si ocurre un error de red/Firestore, para manejarlo por separado.
+  Future<bool?> _correoExisteEnFirestore(String correo) async {
+    try {
+      final resultado = await FirebaseFirestore.instance
+          .collection('usuarios')
+          .where('correo', isEqualTo: correo)
+          .limit(1)
+          .get();
+      return resultado.docs.isNotEmpty;
+    } catch (_) {
+      return null; // error de red o Firestore — se maneja en el llamador
+    }
+  }
+
   Future<void> enviarCorreoRecuperacion() async {
-    // toLowerCase() para garantizar consistencia con Firebase Auth
+    // trim() + toLowerCase() para garantizar consistencia con Firestore y Firebase Auth
     final correo = correoController.text.trim().toLowerCase();
 
     if (correo.isEmpty) {
@@ -50,6 +67,21 @@ class _RecuperarClaveScreenState extends State<RecuperarClaveScreen> {
     setState(() => enviando = true);
 
     try {
+      // --- VALIDACIÓN FIRESTORE: Verificar existencia del correo antes de enviar ---
+      final existe = await _correoExisteEnFirestore(correo);
+      if (!mounted) return;
+
+      if (existe == null) {
+        // Error de red o Firestore al consultar
+        await mtdMessage(context, 'No se pudo verificar el correo. Verifique su conexión e intente de nuevo.', 4);
+        return;
+      }
+
+      if (!existe) {
+        await mtdMessage(context, 'El correo no se encuentra registrado.', 2);
+        return;
+      }
+
       // --- FIREBASE AUTH: Enviar correo de restablecimiento de contraseña ---
       await FirebaseAuth.instance.sendPasswordResetEmail(email: correo);
       if (!mounted) return;
@@ -64,8 +96,7 @@ class _RecuperarClaveScreenState extends State<RecuperarClaveScreen> {
       if (!mounted) return;
       String mensaje = 'No se pudo enviar el correo de recuperación';
       if (e.code == 'user-not-found') {
-        // Por seguridad, no revelamos si el correo existe o no
-        mensaje = 'Si el correo está registrado, recibirás un enlace de recuperación.';
+        mensaje = 'El correo no se encuentra registrado.';
       } else if (e.code == 'invalid-email') {
         mensaje = 'El formato del correo electrónico no es válido';
       } else if (e.code == 'too-many-requests') {

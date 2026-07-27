@@ -89,14 +89,12 @@ class _IniciarSesionState extends State<IniciarSesion> {
   }
 
   Future<void> validarInicioSesion() async {
-    // toLowerCase() para neutralizar UpperCaseTextFormatter del widget clsTextField
+    // trim().toLowerCase() para normalizar el correo antes de enviarlo a Firebase Auth
     final correo = correoController.text.trim().toLowerCase();
     final contrasena = contrasenaController.text.trim();
 
     if (correo.isEmpty || contrasena.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor complete todos los campos')),
-      );
+      await mtdMessage(context, 'Por favor complete todos los campos', 2);
       return;
     }
 
@@ -158,6 +156,38 @@ class _IniciarSesionState extends State<IniciarSesion> {
     }
   }
 
+  // Campo correo local sin UpperCaseTextFormatter.
+  // clsTextField aplica UpperCaseTextFormatter globalmente (convierte a mayúsculas).
+  // Este widget es visualmente idéntico pero permite al usuario escribir
+  // en cualquier combinación de mayúsculas/minúsculas sin conversión automática.
+  // Internamente, validarInicioSesion() aplica trim().toLowerCase() antes de
+  // enviarlo a Firebase Auth, por lo que el comportamiento de autenticación
+  // es exactamente el mismo.
+  Widget _campoCorreoLogin() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        clsMainLabelField("CORREO ELECTRÓNICO"),
+        const SizedBox(height: 6),
+        TextField(
+          focusNode: correoFocus,
+          controller: correoController,
+          keyboardType: TextInputType.emailAddress,
+          // Sin UpperCaseTextFormatter — el usuario ve el texto tal como lo escribe
+          decoration: InputDecoration(
+            labelText: "Ingrese su correo",
+            labelStyle: GoogleFonts.dmSans(color: mtd_get_color_0()),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: mtd_get_color_2(),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+        ),
+        const SizedBox(height: 25.0),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -200,7 +230,7 @@ class _IniciarSesionState extends State<IniciarSesion> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    clsTextField("CORREO ELECTRÓNICO", correoController, "Ingrese su correo", false, 25.0, TextInputType.emailAddress, correoFocus, null),
+                    _campoCorreoLogin(),
                     clsCampoContrasena(
                       "CONTRASEÑA",
                       "Ingrese su contraseña",
