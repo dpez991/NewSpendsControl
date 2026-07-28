@@ -15,6 +15,7 @@ import 'package:spendscontrol/screens/recuperar_clave.dart';
 import 'package:spendscontrol/models/mtd.dart';
 import 'package:spendscontrol/models/clases.dart';
 import 'package:spendscontrol/firebase_options.dart';
+import 'package:spendscontrol/base/firestore_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -136,6 +137,10 @@ class _IniciarSesionState extends State<IniciarSesion> {
       );
 
       Provider.of<SesionProvider>(context, listen: false).setUsuario(usuario);
+
+      // Crear categorías semilla si es la primera vez que el usuario accede
+      await FirestoreHelper().inicializarCategoriasSiEsNecesario();
+      if (!mounted) return;
 
       // Ejecuta el salto al contenedor principal de navegación
       await mtdPantalla1();

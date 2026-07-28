@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../base/database.dart';
+import '../base/firestore_helper.dart';
 import '../models/mtd.dart';
 
 class PresupuestoScreen extends StatefulWidget {
@@ -14,7 +14,7 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
 
   final Map<String, TextEditingController> controladoresCategoria = {};
   final Map<String, double> gastosPorCategoria = {};
-  final Map<String, int> idsPorCategoria = {};
+  final Map<String, String> idsPorCategoria = {};
 
   DateTime fechaSeleccionada = DateTime.now();
 
@@ -59,29 +59,37 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
       });
     }
 
-    final repo = DatabaseHelper();
+    final repo = FirestoreHelper();
 
+    // 1. Obtener categorías de egreso (solo nombres, para la UI)
     final categoriasDB = await repo.getCategoriasEgresos();
 
+    // 2. Obtener los docIDs reales de TODAS las categorías activas de egreso
+    //    para garantizar que idsPorCategoria esté completo incluso cuando
+    //    una categoría no tiene presupuesto guardado en el mes seleccionado.
+    final todasLasCategorias = await repo.obtenerCategoriasCompletas();
+    final Map<String, String> mapaIdsCategorias = {};
+    for (final cat in todasLasCategorias) {
+      if ((cat['ID_TIPO'] as int?) == 2) {
+        mapaIdsCategorias[cat['DESCRIPCION'] as String] = cat['ID'] as String;
+      }
+    }
+
+    // 3. Presupuesto total del mes
     final presupuesto = await repo.obtenerPresupuestoMensual(
       anio: fechaSeleccionada.year,
       mes: fechaSeleccionada.month,
     );
 
+    // 4. Presupuestos por categoría del mes (LEFT JOIN en memoria)
     final presupuestosCategorias = await repo.obtenerPresupuestoCategorias(
       anio: fechaSeleccionada.year,
       mes: fechaSeleccionada.month,
     );
 
     final Map<String, double> mapaPresupuestos = {};
-    final Map<String, int> mapaIdsCategorias = {};
-
     for (final row in presupuestosCategorias) {
       final categoria = row['categoria'].toString();
-
-      mapaIdsCategorias[categoria] =
-          int.tryParse(row['id_categoria'].toString()) ?? 0;
-
       mapaPresupuestos[categoria] =
           double.tryParse(row['valor'].toString()) ?? 0.0;
     }
@@ -134,7 +142,7 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
       return;
     }
 
-    final repo = DatabaseHelper();
+    final repo = FirestoreHelper();
 
     await repo.guardarPresupuestoMensual(
       anio: fechaSeleccionada.year,
@@ -150,10 +158,18 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
 
       final valor = double.tryParse(texto) ?? 0.0;
 
+      // Guard: solo guardar si tenemos un docId válido para la categoría.
+      // idsPorCategoria se llena en cargarDatos() con los datos de Firestore;
+      // estará vacío únicamente si la categoría existe pero nunca tuvo
+      // presupuesto asignado en el mes actual. En ese caso se usa el ID
+      // de la categoría obtenido directamente de _categoriasCompletas.
+      final idCat = idsPorCategoria[categoria] ?? '';
+      if (idCat.isEmpty) continue; // categoría sin docId conocido — se omite
+
       await repo.guardarPresupuestoCategoria(
         anio: fechaSeleccionada.year,
         mes: fechaSeleccionada.month,
-        idCategoria: idsPorCategoria[categoria] ?? 0,
+        idCategoria: idCat,
         valor: valor,
       );
     }

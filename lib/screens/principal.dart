@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../base/database.dart';
+import '../base/firestore_helper.dart';
 import '../models/mtd.dart';
 
 class PantallaPrincipal extends StatefulWidget {
@@ -10,7 +10,7 @@ class PantallaPrincipal extends StatefulWidget {
 }
 
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
-  final _db = DatabaseHelper();
+  final _db = FirestoreHelper();
 
   List<Map<String, dynamic>> _movimientos = [];
   List<Map<String, dynamic>> _categoriasCompletas = [];
@@ -26,12 +26,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   List<String> get _categorias =>
       _categoriasCompletas.map((c) => c['DESCRIPCION'] as String).toList();
 
-  int _idDeCategoria(String nombre) {
+  String _idDeCategoria(String nombre) {
     final cat = _categoriasCompletas.firstWhere(
       (c) => c['DESCRIPCION'] == nombre,
-      orElse: () => {'ID': -1},
+      orElse: () => {'ID': ''},
     );
-    return (cat['ID'] as int?) ?? -1;
+    return cat['ID'] as String? ?? '';
   }
 
   String _tipoDeCategoria(Map<String, dynamic> cat) =>
@@ -66,21 +66,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
   Future<void> _cargarMovimientos() async {
     try {
-      final db = await _db.database;
-      final rows = await db.rawQuery('''
-        SELECT
-          A.ID          as id,
-          A.VALOR       as monto,
-          A.FECHA       as fecha,
-          A.COMENTARIO  as descripcion,
-          B.ID          as id_categoria,
-          B.DESCRIPCION as categoria,
-          B.ID_TIPO     as id_tipo
-        FROM MOVIMIENTOS_X_USUARIO A
-        INNER JOIN MOVIMIENTOS_CATEGORIAS B ON A.ID_CATEGORIA = B.ID
-        WHERE A.ESTADO = 1
-        ORDER BY A.ID DESC
-      ''');
+      final rows = await _db.obtenerMovimientosCompletos();
       if (!mounted) return;
       setState(() => _movimientos = rows);
     } catch (_) {}
@@ -354,16 +340,19 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                         return;
                       }
                       final idCat = _idDeCategoria(categoriaSeleccionada);
-                      if (idCat == -1) {
+                      if (idCat.isEmpty) {
                         await mtdMessage(context, 'La categoría seleccionada no es válida.', 2);
                         return;
                       }
                       // ── Insertar usando el helper (centraliza la lógica) ──
+                      final categoriaTipo = tipoSeleccionado == 'Ingreso' ? 1 : 2;
                       await _db.insertarMovimiento(
-                        idCategoria: idCat,
-                        valor: monto,
-                        fecha: formatearFecha(fechaSeleccionada),
-                        comentario: txtDescripcion.text.trim(),
+                        idCategoria:          idCat,
+                        categoriaDescripcion: categoriaSeleccionada,
+                        categoriaTipo:        categoriaTipo,
+                        valor:                monto,
+                        fecha:                formatearFecha(fechaSeleccionada),
+                        comentario:           txtDescripcion.text.trim(),
                       );
 
                       if (context.mounted) Navigator.pop(context);

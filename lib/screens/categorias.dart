@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../base/database.dart';
+import '../base/firestore_helper.dart';
 
 class AdministracionCategorias extends StatefulWidget {
   const AdministracionCategorias({super.key});
@@ -19,7 +19,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
   List<Map<String, dynamic>> _categorias = [];
 
   String _busqueda = '';
-  int? _categoriaSeleccionadaId;
+  String? _categoriaSeleccionadaId;
   int _idTipoSeleccionado = 2;
 
   static const Color azulPrincipal = Color(0xFF4C8FFF);
@@ -42,7 +42,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
   }
 
   Future<void> _cargarCategorias() async {
-    final datos = await DatabaseHelper().obtenerCategoriasCompletas();
+    final datos = await FirestoreHelper().obtenerCategoriasCompletas();
 
     if (!mounted) return;
 
@@ -71,7 +71,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
       return;
     }
 
-    await DatabaseHelper().insertarCategoria(nombre, _idTipoSeleccionado);
+    await FirestoreHelper().insertarCategoria(nombre, _idTipoSeleccionado);
 
     _categoriaController.clear();
     _categoriaSeleccionadaId = null;
@@ -98,7 +98,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
 
     final existe = _categorias.any(
           (categoria) =>
-      _obtenerEntero(categoria['ID']) != _categoriaSeleccionadaId &&
+      categoria['ID'] != _categoriaSeleccionadaId &&
           categoria['DESCRIPCION'].toString().toLowerCase() ==
               nuevoNombre.toLowerCase(),
     );
@@ -108,7 +108,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
       return;
     }
 
-    await DatabaseHelper().modificarCategoria(
+    await FirestoreHelper().modificarCategoria(
       _categoriaSeleccionadaId!,
       nuevoNombre,
       _idTipoSeleccionado,
@@ -130,7 +130,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
       return;
     }
 
-    await DatabaseHelper().eliminarCategoriaBD(_categoriaSeleccionadaId!);
+    await FirestoreHelper().eliminarCategoriaBD(_categoriaSeleccionadaId!);
 
     _categoriaController.clear();
     _categoriaSeleccionadaId = null;
@@ -143,7 +143,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
 
   void _seleccionarCategoria(Map<String, dynamic> categoria) {
     setState(() {
-      _categoriaSeleccionadaId = _obtenerEntero(categoria['ID']);
+      _categoriaSeleccionadaId = categoria['ID'] as String?;
       _idTipoSeleccionado = _obtenerEntero(categoria['ID_TIPO']);
       _categoriaController.text = categoria['DESCRIPCION'].toString();
     });
@@ -587,7 +587,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
                     physics: const NeverScrollableScrollPhysics(),
                     itemBuilder: (context, index) {
                       final categoria = categorias[index];
-                      final id = _obtenerEntero(categoria['ID']);
+                      final id = categoria['ID'] as String? ?? '';
                       final descripcion =
                       categoria['DESCRIPCION'].toString();
                       final idTipo = _obtenerEntero(categoria['ID_TIPO']);

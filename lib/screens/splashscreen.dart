@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../main.dart';
 import '../models/mtd.dart';
 import '../models/clases.dart';
+import '../base/firestore_helper.dart';
 import 'BarraMenu.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -43,6 +44,10 @@ class _SplashScreenState extends State<SplashScreen> {
               correo: data['correo'] ?? firebaseUser.email ?? '',
             );
             Provider.of<SesionProvider>(context, listen: false).setUsuario(usuario);
+
+            // Crear categorías semilla si es la primera vez que el usuario accede
+            await FirestoreHelper().inicializarCategoriasSiEsNecesario();
+            if (!mounted) return;
 
             Navigator.pushReplacement(
               context,

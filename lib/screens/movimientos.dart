@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../base/database.dart';
+import '../base/firestore_helper.dart';
 import '../models/mtd.dart';
 
 class Movimientos extends StatefulWidget {
@@ -10,7 +10,7 @@ class Movimientos extends StatefulWidget {
 }
 
 class _MovimientosState extends State<Movimientos> {
-  final _db = DatabaseHelper();
+  final _db = FirestoreHelper();
 
   List<Map<String, dynamic>> _lista = [];
   List<Map<String, dynamic>> _categoriasCompletas = [];
@@ -19,12 +19,12 @@ class _MovimientosState extends State<Movimientos> {
   List<String> get _categorias =>
       _categoriasCompletas.map((c) => c['DESCRIPCION'] as String).toList();
 
-  int _idDeCategoria(String nombre) {
+  String _idDeCategoria(String nombre) {
     final cat = _categoriasCompletas.firstWhere(
       (c) => c['DESCRIPCION'] == nombre,
-      orElse: () => {'ID': -1},
+      orElse: () => {'ID': ''},
     );
-    return (cat['ID'] as int?) ?? -1;
+    return cat['ID'] as String? ?? '';
   }
 
   String _tipoDeCategoria(Map<String, dynamic> cat) =>
@@ -64,36 +64,44 @@ class _MovimientosState extends State<Movimientos> {
   }
 
   Future<void> _insertarMovimiento({
-    required int idCategoria,
+    required String idCategoria,
+    required String categoriaDescripcion,
+    required int    categoriaTipo,
     required double valor,
     required String fecha,
     required String comentario,
   }) async {
     await _db.insertarMovimiento(
-      idCategoria: idCategoria,
-      valor: valor,
-      fecha: fecha,
-      comentario: comentario,
+      idCategoria:          idCategoria,
+      categoriaDescripcion: categoriaDescripcion,
+      categoriaTipo:        categoriaTipo,
+      valor:                valor,
+      fecha:                fecha,
+      comentario:           comentario,
     );
   }
 
   Future<void> _actualizarMovimiento({
-    required int id,
-    required int idCategoria,
+    required String id,
+    required String idCategoria,
+    required String categoriaDescripcion,
+    required int    categoriaTipo,
     required double valor,
     required String fecha,
     required String comentario,
   }) async {
     await _db.actualizarMovimiento(
-      id: id,
-      idCategoria: idCategoria,
-      valor: valor,
-      fecha: fecha,
-      comentario: comentario,
+      id:                   id,
+      idCategoria:          idCategoria,
+      categoriaDescripcion: categoriaDescripcion,
+      categoriaTipo:        categoriaTipo,
+      valor:                valor,
+      fecha:                fecha,
+      comentario:           comentario,
     );
   }
 
-  Future<void> _eliminarMovimiento(int id) async {
+  Future<void> _eliminarMovimiento(String id) async {
     await _db.eliminarMovimiento(id);
     await _cargarMovimientos();
     if (!mounted) return;
@@ -127,7 +135,7 @@ class _MovimientosState extends State<Movimientos> {
 
     final catMapInicial = _categoriasCompletas.firstWhere(
       (c) => c['DESCRIPCION'] == catInicial,
-      orElse: () => _categoriasCompletas.isNotEmpty ? _categoriasCompletas.first : {'ID': -1, 'DESCRIPCION': '', 'ID_TIPO': 2},
+      orElse: () => _categoriasCompletas.isNotEmpty ? _categoriasCompletas.first : {'ID': '', 'DESCRIPCION': '', 'ID_TIPO': 2},
     );
 
     String categoriaSeleccionada = catInicial;
@@ -355,25 +363,30 @@ class _MovimientosState extends State<Movimientos> {
                         return;
                       }
                       final idCat = _idDeCategoria(categoriaSeleccionada);
-                      if (idCat == -1) {
+                      if (idCat.isEmpty) {
                         await mtdMessage(context, 'La categoría seleccionada no es válida.', 2);
                         return;
                       }
                       // ── Guardar movimiento ──
+                      final categoriaTipo = tipoSeleccionado == 'Ingreso' ? 1 : 2;
                       if (esEdicion) {
                         await _actualizarMovimiento(
-                          id: movimiento['id'] as int,
-                          idCategoria: idCat,
-                          valor: monto,
-                          fecha: _formatearFecha(fechaSeleccionada),
-                          comentario: txtDescripcion.text.trim(),
+                          id:                   movimiento['id'] as String,
+                          idCategoria:          idCat,
+                          categoriaDescripcion: categoriaSeleccionada,
+                          categoriaTipo:        categoriaTipo,
+                          valor:                monto,
+                          fecha:                _formatearFecha(fechaSeleccionada),
+                          comentario:           txtDescripcion.text.trim(),
                         );
                       } else {
                         await _insertarMovimiento(
-                          idCategoria: idCat,
-                          valor: monto,
-                          fecha: _formatearFecha(fechaSeleccionada),
-                          comentario: txtDescripcion.text.trim(),
+                          idCategoria:          idCat,
+                          categoriaDescripcion: categoriaSeleccionada,
+                          categoriaTipo:        categoriaTipo,
+                          valor:                monto,
+                          fecha:                _formatearFecha(fechaSeleccionada),
+                          comentario:           txtDescripcion.text.trim(),
                         );
                       }
                       if (context.mounted) Navigator.pop(context);
@@ -448,7 +461,7 @@ class _MovimientosState extends State<Movimientos> {
           ListTile(
             leading: const Icon(Icons.delete, color: Color(0xFFFF6B6B)),
             title: const Text('Eliminar', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFFFF6B6B))),
-            onTap: () { Navigator.pop(context); _eliminarMovimiento(mov['id'] as int); },
+            onTap: () { Navigator.pop(context); _eliminarMovimiento(mov['id'] as String); },
           ),
           const SizedBox(height: 20),
         ]),
