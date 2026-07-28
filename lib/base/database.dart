@@ -1,6 +1,5 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:spendscontrol/models/mtd.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -523,10 +522,12 @@ class DatabaseHelper {
   Future<double> obtenerTotalGastos() async {
     final db = await database;
 
+    // NOTA: COALESCE reemplaza a NVL (función Oracle no soportada en SQLite).
+    // Corregido además el typo MOVIMENTOS → MOVIMIENTOS.
     final result = await db.rawQuery('''
-      SELECT NVL(SUM(VALOR),0.00) as total
+      SELECT COALESCE(SUM(VALOR), 0.00) as total
       FROM MOVIMIENTOS_X_USUARIO A
-      INNER JOIN MOVIMENTOS_CATEGORIAS B ON A.ID_CATEGORIA = B.ID
+      INNER JOIN MOVIMIENTOS_CATEGORIAS B ON A.ID_CATEGORIA = B.ID
       WHERE B.ID_TIPO = 2
       AND A.ESTADO = 1
     ''');

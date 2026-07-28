@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../base/database.dart';
+import '../models/mtd.dart';
 
 class Movimientos extends StatefulWidget {
   const Movimientos({super.key});
@@ -43,6 +44,7 @@ class _MovimientosState extends State<Movimientos> {
   Future<void> _cargarCategorias() async {
     try {
       final rows = await _db.obtenerCategoriasCompletas();
+      if (!mounted) return;
       setState(() => _categoriasCompletas = rows);
     } catch (_) {}
   }
@@ -50,11 +52,13 @@ class _MovimientosState extends State<Movimientos> {
   Future<void> _cargarMovimientos() async {
     try {
       final rows = await _db.obtenerMovimientosCompletos();
+      if (!mounted) return;
       setState(() {
         _lista = rows;
         _isLoading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -93,9 +97,7 @@ class _MovimientosState extends State<Movimientos> {
     await _db.eliminarMovimiento(id);
     await _cargarMovimientos();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✓ Movimiento eliminado'), duration: Duration(seconds: 2)),
-    );
+    await mtdMessage(context, 'Movimiento eliminado correctamente.', 3);
   }
 
   String _formatearFecha(DateTime d) =>
@@ -318,18 +320,36 @@ class _MovimientosState extends State<Movimientos> {
                       elevation: 4,
                     ),
                     onPressed: () async {
-                      final monto = double.tryParse(txtMonto.text);
-                      if (monto == null || monto <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('⚠️ Ingresa un monto válido')));
+                      // ── Validación de monto ──
+                      final textoMonto = txtMonto.text.trim();
+                      if (textoMonto.isEmpty) {
+                        await mtdMessage(context, 'El monto no puede estar vacío.', 2);
+                        return;
+                      }
+                      final monto = double.tryParse(textoMonto);
+                      if (monto == null) {
+                        await mtdMessage(context, 'El monto ingresado no es un número válido.', 2);
+                        return;
+                      }
+                      if (monto < 0) {
+                        await mtdMessage(context, 'El monto no puede ser negativo.', 2);
+                        return;
+                      }
+                      if (monto == 0) {
+                        await mtdMessage(context, 'El monto debe ser mayor que cero.', 2);
+                        return;
+                      }
+                      // ── Validación de categoría ──
+                      if (categoriaSeleccionada.isEmpty) {
+                        await mtdMessage(context, 'Debe seleccionar una categoría.', 2);
                         return;
                       }
                       final idCat = _idDeCategoria(categoriaSeleccionada);
                       if (idCat == -1) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('⚠️ Selecciona una categoría')));
+                        await mtdMessage(context, 'La categoría seleccionada no es válida.', 2);
                         return;
                       }
+                      // ── Guardar movimiento ──
                       if (esEdicion) {
                         await _actualizarMovimiento(
                           id: movimiento['id'] as int,
@@ -376,13 +396,17 @@ class _MovimientosState extends State<Movimientos> {
     );
   }
 
+  // Redondea a 2 decimales para evitar errores de punto flotante IEEE 754
+  // que podrían hacer que un balance visual de L. 0.00 tenga signo negativo.
   double _calcularBalance() {
-    double total = 0;
+    double total = 0.0;
     for (final m in _lista) {
       final esIngreso = (m['id_tipo'] as int?) == 1;
-      total += esIngreso ? (m['monto'] as num).toDouble() : -(m['monto'] as num).toDouble();
+      total += esIngreso
+          ? (m['monto'] as num).toDouble()
+          : -(m['monto'] as num).toDouble();
     }
-    return total;
+    return double.parse(total.toStringAsFixed(2));
   }
 
   void _mostrarOpciones(Map<String, dynamic> mov) {

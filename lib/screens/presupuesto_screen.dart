@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../base/database.dart';
+import '../models/mtd.dart';
 
 class PresupuestoScreen extends StatefulWidget {
   const PresupuestoScreen({super.key});
@@ -120,10 +121,19 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
   }
 
   Future<void> guardarTodo() async {
-    final repo = DatabaseHelper();
-
+    // ── Validación del presupuesto total ──
     final textoTotal = totalController.text.replaceAll(',', '').trim();
+    if (textoTotal.isEmpty) {
+      await mtdMessage(context, 'El monto del presupuesto no puede estar vacío.', 2);
+      return;
+    }
     final valorTotal = double.tryParse(textoTotal) ?? 0.0;
+    if (valorTotal <= 0) {
+      await mtdMessage(context, 'El presupuesto mensual debe ser mayor que cero.', 2);
+      return;
+    }
+
+    final repo = DatabaseHelper();
 
     await repo.guardarPresupuestoMensual(
       anio: fechaSeleccionada.year,
@@ -151,12 +161,7 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Presupuesto guardado correctamente"),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    await mtdMessage(context, 'Presupuesto guardado correctamente.', 3);
   }
 
   void mesAnterior() {
@@ -224,7 +229,11 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final disponible = totalPresupuesto - totalAsignado;
+    // Redondea antes de comparar para evitar errores de punto flotante
+    // que podrían hacer que L. 0.00 visual aparezca con gradiente negativo.
+    final disponible = double.parse(
+      (totalPresupuesto - totalAsignado).toStringAsFixed(2),
+    );
     final nombreMes = meses[fechaSeleccionada.month - 1];
     final progresoAsignado =
         totalPresupuesto > 0 ? (totalAsignado / totalPresupuesto) : 0.0;
@@ -623,7 +632,11 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
     required Color color,
     required IconData icono,
   }) {
-    final disponible = presupuesto - gastado;
+    // Redondea para evitar que errores de punto flotante inviertan la
+    // etiqueta 'Libre'/'Exceso' o el color verde/rojo de la categoría.
+    final disponible = double.parse(
+      (presupuesto - gastado).toStringAsFixed(2),
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),

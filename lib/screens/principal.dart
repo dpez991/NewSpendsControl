@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../base/database.dart';
+import '../models/mtd.dart';
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -103,7 +104,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       .where((m) => (m['id_tipo'] as int?) == 2 && m['fecha'] == _fechaHoy)
       .fold(0.0, (sum, m) => sum + (m['monto'] as num).toDouble());
 
-  double get _saldoActual => _ingresosHoy - _gastosHoy;
+  // Redondea a 2 decimales para evitar errores de punto flotante en la
+  // comparación de signo que determina el color del card de balance.
+  double get _saldoActual {
+    final raw = _ingresosHoy - _gastosHoy;
+    return double.parse(raw.toStringAsFixed(2));
+  }
 
   List<Map<String, dynamic>> get _recientes => _movimientos.take(5).toList();
 
@@ -313,34 +319,42 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       elevation: 4,
                     ),
                     onPressed: () async {
-                      final monto = double.tryParse(txtMonto.text);
-                      if (monto == null || monto <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Ingresa un monto valido'),
-                          ),
-                        );
+                      // ── Validación de monto ──
+                      final textoMonto = txtMonto.text.trim();
+                      if (textoMonto.isEmpty) {
+                        await mtdMessage(context, 'El monto no puede estar vacío.', 2);
                         return;
                       }
-
+                      final monto = double.tryParse(textoMonto);
+                      if (monto == null) {
+                        await mtdMessage(context, 'El monto ingresado no es un número válido.', 2);
+                        return;
+                      }
+                      if (monto < 0) {
+                        await mtdMessage(context, 'El monto no puede ser negativo.', 2);
+                        return;
+                      }
+                      if (monto == 0) {
+                        await mtdMessage(context, 'El monto debe ser mayor que cero.', 2);
+                        return;
+                      }
+                      // ── Validación de categoría ──
+                      if (categoriaSeleccionada.isEmpty) {
+                        await mtdMessage(context, 'Debe seleccionar una categoría.', 2);
+                        return;
+                      }
                       final idCat = _idDeCategoria(categoriaSeleccionada);
                       if (idCat == -1) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Selecciona una categoria'),
-                          ),
-                        );
+                        await mtdMessage(context, 'La categoría seleccionada no es válida.', 2);
                         return;
                       }
-
-                      final db = await _db.database;
-                      await db.insert('MOVIMIENTOS_X_USUARIO', {
-                        'ID_CATEGORIA': idCat,
-                        'VALOR': monto,
-                        'FECHA': formatearFecha(fechaSeleccionada),
-                        'COMENTARIO': txtDescripcion.text.trim(),
-                        'ESTADO': 1,
-                      });
+                      // ── Insertar usando el helper (centraliza la lógica) ──
+                      await _db.insertarMovimiento(
+                        idCategoria: idCat,
+                        valor: monto,
+                        fecha: formatearFecha(fechaSeleccionada),
+                        comentario: txtDescripcion.text.trim(),
+                      );
 
                       if (context.mounted) Navigator.pop(context);
                       await _cargarMovimientos();
