@@ -50,6 +50,7 @@ class _RecuperarClaveScreenState extends State<RecuperarClaveScreen> {
   }
 
   Future<void> enviarCorreoRecuperacion() async {
+    FocusScope.of(context).unfocus();
     // trim() + toLowerCase() para garantizar consistencia con Firestore y Firebase Auth
     final correo = correoController.text.trim().toLowerCase();
 
@@ -121,6 +122,8 @@ class _RecuperarClaveScreenState extends State<RecuperarClaveScreen> {
           focusNode: correoFocus,
           controller: correoController,
           keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => enviarCorreoRecuperacion(),
           decoration: InputDecoration(
             labelText: "Ingrese el correo electronico",
             labelStyle: GoogleFonts.dmSans(color: mtd_get_color_0()),
@@ -137,7 +140,10 @@ class _RecuperarClaveScreenState extends State<RecuperarClaveScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFFEF7FF),
       appBar: AppBar(
         toolbarHeight: 100,
@@ -174,6 +180,7 @@ class _RecuperarClaveScreenState extends State<RecuperarClaveScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

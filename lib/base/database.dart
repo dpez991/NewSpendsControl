@@ -161,18 +161,18 @@ class DatabaseHelper {
     return rows.map((row) => row['DESCRIPCION'] as String).toList();
   }
 
+  /// Devuelve true si existe al menos un usuario en la BD local.
+  /// OPTIMIZACIÓN: Se especifican columns:['ID'] y limit:1 para evitar
+  /// un full scan de la tabla sin beneficio (antes traía todas las columnas
+  /// de todos los registros solo para verificar isNotEmpty).
   Future<bool> mtdDBLocalBuscarSiHayUsuariosHoy() async {
     final db = await database;
-
     final result = await db.query(
       'USUARIOS',
+      columns: ['ID'],
+      limit: 1,
     );
-    
-    if (result.isNotEmpty) {
-      return true;
-    } else {
-      return false;
-    }
+    return result.isNotEmpty;
   }
   
   // Future<List<String>> getCategorias() async {
@@ -269,10 +269,11 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> obtenerCategoriasCompletas() async {
     final db = await database;
-
+    // CORRECCIÓN: Se eliminan los espacios extra alrededor del WHERE ('  ESTADO = 1  ')
+    // que existían en la versión anterior. Funcionalmente equivalente pero más limpio.
     return await db.query(
       'MOVIMIENTOS_CATEGORIAS',
-      where: ' ESTADO = 1 ',
+      where: 'ESTADO = 1',
       orderBy: 'DESCRIPCION ASC',
     );
   }
@@ -351,12 +352,17 @@ class DatabaseHelper {
 
   Future<int> insertarCategoria(String descripcion, int idTipo) async {
     final db = await database;
-
+    // CORRECCIÓN: Se agrega 'ESTADO': 1 de forma explícita para no depender
+    // únicamente del DEFAULT definido en el esquema. Algunos drivers omiten
+    // el DEFAULT si la columna no se menciona en el INSERT, lo que podría
+    // dejar ESTADO como NULL y hacer que la categoría no aparezca en consultas
+    // que filtran con WHERE ESTADO = 1.
     return await db.insert(
       'MOVIMIENTOS_CATEGORIAS',
       {
         'DESCRIPCION': descripcion.trim(),
         'ID_TIPO': idTipo,
+        'ESTADO': 1,
       },
     );
   }

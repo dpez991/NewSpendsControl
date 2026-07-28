@@ -141,6 +141,8 @@ class _MovimientosState extends State<Movimientos> {
     final txtDescripcion = TextEditingController(
       text: esEdicion ? (movimiento['descripcion'] ?? '') : '',
     );
+    final montoFocus = FocusNode();
+    final descripcionFocus = FocusNode();
     DateTime fechaSeleccionada = esEdicion
         ? _parsearFecha(movimiento['fecha'] as String?)
         : DateTime.now();
@@ -222,7 +224,10 @@ class _MovimientosState extends State<Movimientos> {
                 // ── Monto ──
                 TextField(
                   controller: txtMonto,
+                  focusNode: montoFocus,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(descripcionFocus),
                   style: const TextStyle(color: Color(0xFF1F1F1F)),
                   decoration: _inputDeco('Monto (L.)', Icons.attach_money, const Color(0xFF4C8FFF)),
                 ),
@@ -255,6 +260,7 @@ class _MovimientosState extends State<Movimientos> {
                 // ── Fecha ──
                 GestureDetector(
                   onTap: () async {
+                    FocusScope.of(context).unfocus();
                     final picked = await showDatePicker(
                       context: context,
                       initialDate: fechaSeleccionada,
@@ -291,7 +297,10 @@ class _MovimientosState extends State<Movimientos> {
                 // ── Descripción ──
                 TextField(
                   controller: txtDescripcion,
+                  focusNode: descripcionFocus,
                   maxLines: 3,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
                   style: const TextStyle(color: Color(0xFF1F1F1F)),
                   decoration: InputDecoration(
                     labelText: 'Descripción (opcional)',
@@ -320,6 +329,7 @@ class _MovimientosState extends State<Movimientos> {
                       elevation: 4,
                     ),
                     onPressed: () async {
+                      FocusScope.of(context).unfocus();
                       // ── Validación de monto ──
                       final textoMonto = txtMonto.text.trim();
                       if (textoMonto.isEmpty) {

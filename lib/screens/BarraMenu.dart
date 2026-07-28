@@ -116,6 +116,7 @@ class _BarraMenuState extends State<Barramenu> {
                     if (index == vrOpciones.length - 1) {
                       _confirmarCerrarSesion(context);
                     } else {
+                      FocusScope.of(context).unfocus();
                       setState(() {
                         _paginaActual = index;
                       });

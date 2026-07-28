@@ -71,6 +71,7 @@ class _IniciarSesionState extends State<IniciarSesion> {
   }
 
   Future<void> recuperarClave() async {
+    FocusScope.of(context).unfocus();
     await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -80,6 +81,7 @@ class _IniciarSesionState extends State<IniciarSesion> {
   }
 
   Future<void> abrirCrearUsuario() async {
+    FocusScope.of(context).unfocus();
     await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -89,6 +91,7 @@ class _IniciarSesionState extends State<IniciarSesion> {
   }
 
   Future<void> validarInicioSesion() async {
+    FocusScope.of(context).unfocus();
     // trim().toLowerCase() para normalizar el correo antes de enviarlo a Firebase Auth
     final correo = correoController.text.trim().toLowerCase();
     final contrasena = contrasenaController.text.trim();
@@ -173,6 +176,8 @@ class _IniciarSesionState extends State<IniciarSesion> {
           focusNode: correoFocus,
           controller: correoController,
           keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(contrasenaFocus),
           // Sin UpperCaseTextFormatter — el usuario ve el texto tal como lo escribe
           decoration: InputDecoration(
             labelText: "Ingrese su correo",
@@ -190,7 +195,10 @@ class _IniciarSesionState extends State<IniciarSesion> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFFEF7FF),
       appBar: AppBar(
         toolbarHeight: 120,
@@ -238,6 +246,8 @@ class _IniciarSesionState extends State<IniciarSesion> {
                       contrasenaFocus,
                       verClave,
                       () => setState(() => verClave = !verClave),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => validarInicioSesion(),
                     ),
                     const SizedBox(height: 15),
                     Center(
@@ -276,6 +286,7 @@ class _IniciarSesionState extends State<IniciarSesion> {
             const SizedBox(height: 20),
           ],
         ),
+      ),
       ),
     );
   }

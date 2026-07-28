@@ -125,6 +125,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
     final txtMonto = TextEditingController();
     final txtDescripcion = TextEditingController();
+    final montoFocus = FocusNode();
+    final descripcionFocus = FocusNode();
     DateTime fechaSeleccionada = DateTime.now();
 
     String formatearFecha(DateTime d) =>
@@ -193,8 +195,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 const SizedBox(height: 18),
                 TextField(
                   controller: txtMonto,
+                  focusNode: montoFocus,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(descripcionFocus),
                   style: const TextStyle(color: texto),
                   decoration:
                       _inputDeco('Monto (L.)', Icons.attach_money, azulPrincipal),
@@ -232,6 +237,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 const SizedBox(height: 14),
                 GestureDetector(
                   onTap: () async {
+                    FocusScope.of(context).unfocus();
                     final picked = await showDatePicker(
                       context: context,
                       initialDate: fechaSeleccionada,
@@ -278,7 +284,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: txtDescripcion,
+                  focusNode: descripcionFocus,
                   maxLines: 3,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
                   style: const TextStyle(color: texto),
                   decoration: InputDecoration(
                     labelText: 'Descripcion (opcional)',
@@ -319,6 +328,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       elevation: 4,
                     ),
                     onPressed: () async {
+                      FocusScope.of(context).unfocus();
                       // ── Validación de monto ──
                       final textoMonto = txtMonto.text.trim();
                       if (textoMonto.isEmpty) {

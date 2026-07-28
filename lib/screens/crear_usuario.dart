@@ -147,6 +147,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
   // PARTE 6: Verificación previa de correo duplicado.
   // ---------------------------------------------------------------------------
   Future<void> guardarUsuario() async {
+    FocusScope.of(context).unfocus();
     // AUDITORÍA: Se lee el texto RAW antes del trim() para que las validaciones
     // de espacio inicial/final en _validarNombre() funcionen correctamente.
     // El nombre trimmeado se usa únicamente para guardar en Firestore.
@@ -272,6 +273,8 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
           controller: nombreController,
           keyboardType: TextInputType.name,
           textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(correoFocus),
           // Sin UpperCaseTextFormatter — permite minúsculas, acentos y ñ.
           decoration: InputDecoration(
             labelText: 'Ingrese el nombre',
@@ -301,6 +304,8 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
           focusNode: correoFocus,
           controller: correoController,
           keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(claveFocus),
           decoration: InputDecoration(
             labelText: 'Ingrese el correo electronico',
             labelStyle: GoogleFonts.dmSans(color: mtd_get_color_0()),
@@ -318,7 +323,10 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFFEF7FF),
       appBar: AppBar(
         toolbarHeight: 100,
@@ -355,6 +363,8 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                     claveFocus,
                     verClave,
                     () => setState(() => verClave = !verClave),
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => FocusScope.of(context).requestFocus(confirmarClaveFocus),
                   ),
                   clsCampoContrasena(
                     'CONFIRMAR CONTRASEÑA',
@@ -363,6 +373,8 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
                     confirmarClaveFocus,
                     verConfirmarClave,
                     () => setState(() => verConfirmarClave = !verConfirmarClave),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => guardarUsuario(),
                   ),
                   const SizedBox(height: 15),
                   Center(
@@ -375,6 +387,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

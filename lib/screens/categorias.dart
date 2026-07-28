@@ -13,6 +13,9 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
   final TextEditingController _buscarController = TextEditingController();
   final TextEditingController _categoriaController = TextEditingController();
 
+  final FocusNode _categoriaFocus = FocusNode();
+  final FocusNode _buscarFocus = FocusNode();
+
   List<Map<String, dynamic>> _categorias = [];
 
   String _busqueda = '';
@@ -49,6 +52,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
   }
 
   Future<void> _agregarCategoria() async {
+    FocusScope.of(context).unfocus();
     final nombre = _categoriaController.text.trim();
 
     if (nombre.isEmpty) {
@@ -79,6 +83,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
   }
 
   Future<void> _editarCategoria() async {
+    FocusScope.of(context).unfocus();
     if (_categoriaSeleccionadaId == null) {
       _mensaje('Seleccione una categoría para editar.');
       return;
@@ -119,6 +124,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
   }
 
   Future<void> _eliminarCategoria() async {
+    FocusScope.of(context).unfocus();
     if (_categoriaSeleccionadaId == null) {
       _mensaje('Seleccione una categoría para eliminar.');
       return;
@@ -275,6 +281,8 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
   void dispose() {
     _buscarController.dispose();
     _categoriaController.dispose();
+    _categoriaFocus.dispose();
+    _buscarFocus.dispose();
     super.dispose();
   }
 
@@ -282,7 +290,10 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
   Widget build(BuildContext context) {
     final categorias = _categoriasFiltradas;
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFEFF3F8),
       appBar: AppBar(
         title: const Text(
@@ -377,6 +388,9 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
                     Expanded(
                       child: TextField(
                         controller: _categoriaController,
+                        focusNode: _categoriaFocus,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _agregarCategoria(),
                         decoration: InputDecoration(
                           hintText: 'Escriba una categoría',
                           prefixIcon: const Icon(
@@ -481,6 +495,7 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
 
                 TextField(
                   controller: _buscarController,
+                  focusNode: _buscarFocus,
                   decoration: InputDecoration(
                     hintText: 'Buscar Categoría',
                     prefixIcon: const Icon(
@@ -689,11 +704,12 @@ class _AdministracionCategoriasState extends State<AdministracionCategorias> {
                       );
                     },
                   ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+              ],           // Column children
+            ),             // Column
+          ),               // SingleChildScrollView
+        ),                 // SafeArea
+      ),                   // Container (body)
+      ),                   // Scaffold
+    );                     // GestureDetector
   }
 }

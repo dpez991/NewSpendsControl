@@ -121,6 +121,7 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
   }
 
   Future<void> guardarTodo() async {
+    FocusScope.of(context).unfocus();
     // ── Validación del presupuesto total ──
     final textoTotal = totalController.text.replaceAll(',', '').trim();
     if (textoTotal.isEmpty) {
@@ -165,6 +166,7 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
   }
 
   void mesAnterior() {
+    FocusScope.of(context).unfocus();
     setState(() {
       fechaSeleccionada = DateTime(
         fechaSeleccionada.year,
@@ -176,6 +178,7 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
   }
 
   void mesSiguiente() {
+    FocusScope.of(context).unfocus();
     setState(() {
       fechaSeleccionada = DateTime(
         fechaSeleccionada.year,
@@ -239,7 +242,10 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
         totalPresupuesto > 0 ? (totalAsignado / totalPresupuesto) : 0.0;
     final progresoVisual = progresoAsignado.clamp(0.0, 1.0);
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFEFF3F8),
       appBar: AppBar(
         title: const Text(
@@ -364,6 +370,7 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         onPressed: guardarTodo,
+      ),
       ),
     );
   }
@@ -569,6 +576,8 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
           TextField(
             controller: totalController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => guardarTodo(),
             decoration: InputDecoration(
               labelText: 'Monto mensual',
               prefixText: 'L. ',
@@ -697,6 +706,8 @@ class _PresupuestoScreenState extends State<PresupuestoScreen> {
                     controller: controller,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => FocusScope.of(context).unfocus(),
                     decoration: InputDecoration(
                       labelText: 'Presupuesto',
                       prefixText: 'L. ',

@@ -150,8 +150,10 @@ Widget clsCampoContrasena(
   TextEditingController controller,
   FocusNode focusNode,
   bool verTexto,
-  VoidCallback onToggleVer,
-) {
+  VoidCallback onToggleVer, {
+  TextInputAction textInputAction = TextInputAction.done,
+  ValueChanged<String>? onSubmitted,
+}) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -162,6 +164,8 @@ Widget clsCampoContrasena(
         controller: controller,
         obscureText: !verTexto,
         keyboardType: TextInputType.visiblePassword,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
         decoration: InputDecoration(
           labelText: hint,
           labelStyle: GoogleFonts.dmSans(color: mtd_get_color_0()),
